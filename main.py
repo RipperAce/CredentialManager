@@ -1,15 +1,33 @@
+from hashlib import new
 from tkinter import *
 from tkinter import messagebox
 import PasswordGenerator
 import pyperclip
+import json
 
 BIEGE = "#F3EFCC"
 FONT = "Optima"
+
+def read_from_json(new_data):
+    with open("credentials.json", 'r') as data_file:
+        #read file content
+        data = json.load(data_file)
+        #update data with new data
+        data.update(new_data)
+
+    return data
+
+def write_to_json(new_data):
+    with open("credentials.json", "w") as data_file:
+        #write to json
+        json.dump(new_data, data_file, indent=4)
 
 def add_creds_to_file():
     website = website_text.get()
     username = username_text.get()
     password = password_text.get()
+
+    new_data = {website: {'username': username, 'password': password}}
 
     if len(website) == 0 or len(password) == 0 or len(username) == 10:
         messagebox.showwarning(title="Incorrect info", message="Missing Data!")
@@ -18,23 +36,49 @@ def add_creds_to_file():
         is_true = messagebox.askokcancel(title=website, message=f"Entered details are: \nUsername: {username}\nPassword: {password}\nDo you want to continue?")
 
         if is_true:
-            with open("credentials.txt", "a") as creds_file:
-                add_data = f"{website} | {username} | {password} \n"
-                separator = "-" * len(add_data) + "\n"
+            try:
+                data = read_from_json(new_data)
+            except FileNotFoundError:
+                write_to_json(new_data)
+            else:
+                write_to_json(data)
+            # with open("credentials.txt", "a") as creds_file:
+            #     add_data = f"{website} | {username} | {password} \n"
+            #     separator = "-" * len(add_data) + "\n"
 
-                creds_file.write(add_data)
-                creds_file.write(separator)
-
-            website_text.delete(0, END)
-            username_text.delete(0, END)
-            username_text.insert(END, "@gmail.com")
-            password_text.delete(0, END)
+            #     creds_file.write(add_data)
+            #     creds_file.write(separator)
+            finally:
+                website_text.delete(0, END)
+                username_text.delete(0, END)
+                username_text.insert(END, "@gmail.com")
+                password_text.delete(0, END)
 
 
 def password_generator():
     password = PasswordGenerator.generate()
     password_text.insert(0, password)
     pyperclip.copy(password)
+
+def search_website():
+    website = website_text.get()
+    try:
+        data_file = open("credentials.json", "r")
+    except FileNotFoundError:
+        messagebox.showerror(title="File Error", message="No Such file. Add one entry atleast")
+    else:
+        data = json.load(data_file)
+        try:
+            info_dict = data[website]
+        except KeyError:
+            messagebox.showerror(title="Key Error", message="No Such key present")
+        else:
+            username = info_dict['username']
+            password = info_dict['password']
+            messagebox.showinfo(title="Credentials Info.", message=f"Details are: \nUsername: {username}\nPassword: {password}")
+        finally:
+            data_file.close()
+
 
 #------------------------------------------------------------------------------------------
 
@@ -58,7 +102,7 @@ password_label.grid(column=0, row=3, sticky="w")
 
 website_text = Entry(width=35)
 website_text.focus()
-website_text.grid(column=1, row=1, columnspan=2, sticky="we")
+website_text.grid(column=1, row=1, columnspan=1, sticky="ew")
 
 username_text = Entry(width=35)
 username_text.insert(END, "@gmail.com")
@@ -66,6 +110,9 @@ username_text.grid(column=1, row=2, columnspan=2, sticky="we")
 
 password_text = Entry(width=21)
 password_text.grid(column=1, row=3, sticky="ew")
+
+search_button = Button(text="Search", font=(FONT, 10, "italic"), highlightthickness=0, command=search_website)
+search_button.grid(column=2, row=1,sticky="we", padx=(5, 0))
 
 generate_password_button = Button(text="Generate", font=(FONT, 10, "italic"), highlightthickness=0, command=password_generator)
 generate_password_button.grid(column=2, row=3,sticky="we", padx=(5, 0))
